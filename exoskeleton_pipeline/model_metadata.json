@@ -1,0 +1,13 @@
+{
+  "best_model": "Ridge",
+  "test_rmse": 16.64022146157959,
+  "test_r2": -0.0405597533541151,
+  "n_samples": 149,
+  "config_csv": "D:\\Downloads\\exoskeleton_system_using_biomedical_sensor_data\\exoskeleton_pipeline\\example_config_data.csv",
+  "channels_in_config": [
+    "bicepsfemoris",
+    "rectusfemoris",
+    "semitendinosus",
+    "vastusmedialis"
+  ]
+}

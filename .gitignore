@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+_temp_decomp.bin
+
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+
+Data_repository_for_Camargo/
