@@ -1,0 +1,9 @@
+{
+  "rmse": 2.565907432314965,
+  "mae": 1.9110527908827828,
+  "r2": 0.9758982143712651,
+  "explained_variance": 0.9758982143712651,
+  "best_model": "ExtraTrees",
+  "optimal_lag_ms": 100.0,
+  "data_source": "D:\\Downloads\\exoskeleton_system_using_biomedical_sensor_data\\Data_repository_for_Camargo"
+}

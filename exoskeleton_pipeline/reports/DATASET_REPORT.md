@@ -1,0 +1,54 @@
+# DATASET_REPORT
+
+Root: `D:\Downloads\exoskeleton_system_using_biomedical_sensor_data\Data_repository_for_Camargo`
+
+- **EMG/IK pairs:** 1302
+- **EMG sampling rate:** 1000.0 Hz (Camargo README)
+- **IK sampling rate:** 200.0 Hz → decimated to 100.0 Hz for alignment
+- **EMG channels (11):** gastrocmed, tibialisanterior, soleus, vastusmedialis, vastuslateralis, rectusfemoris, bicepsfemoris, semitendinosus, gracilis, gluteusmedius, rightexternaloblique
+- **Target:** `knee_angle_r` (right knee angle, degrees)
+
+## Trials per subject / mode
+
+| subject   | mode        |   emg_trials |
+|:----------|:------------|-------------:|
+| AB06      | treadmill   |            8 |
+| AB06      | levelground |           30 |
+| AB06      | ramp        |           63 |
+| AB06      | stair       |           42 |
+| AB07      | treadmill   |            9 |
+| AB07      | levelground |           31 |
+| AB07      | ramp        |           70 |
+| AB07      | stair       |           43 |
+| AB08      | treadmill   |            7 |
+| AB08      | levelground |           36 |
+| AB08      | ramp        |           60 |
+| AB08      | stair       |           35 |
+| AB09      | treadmill   |            7 |
+| AB09      | levelground |           32 |
+| AB09      | ramp        |           63 |
+| AB09      | stair       |           41 |
+| AB10      | treadmill   |            7 |
+| AB10      | levelground |           32 |
+| AB10      | ramp        |           62 |
+| AB10      | stair       |           45 |
+| AB11      | treadmill   |            7 |
+| AB11      | levelground |           32 |
+| AB11      | ramp        |           64 |
+| AB11      | stair       |           44 |
+| AB12      | treadmill   |            7 |
+| AB12      | levelground |           34 |
+| AB12      | ramp        |           63 |
+| AB12      | stair       |           43 |
+| AB13      | treadmill   |            7 |
+| AB13      | levelground |           30 |
+| AB13      | ramp        |           66 |
+| AB13      | stair       |           39 |
+| AB14      | treadmill   |            7 |
+| AB14      | levelground |           32 |
+| AB14      | ramp        |           64 |
+| AB14      | stair       |           40 |
+
+## Layout
+
+`<subject>/<date>/<mode>/emg|ik/<trial>.mat`

@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from pipeline import EMGPipeline
 
 # Define globally accessible components
-pipeline = EMGPipeline(original_fs=1000.0, target_fs=100.0, window_size=20, overlap=0.0)
+pipeline = EMGPipeline(original_fs=1000.0, target_fs=100.0, window_size=20, overlap=0.5)
 model = None
 
 # Pydantic schemas for request and response validation
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI App
 app = FastAPI(
     title="Exoskeleton EMG Control API",
-    description="Real-time joint angle prediction service utilizing preprocessed electromyography (EMG) signals and a tuned PyCaret regression model.",
+    description="Real-time knee angle prediction from 11-channel EMG (Camargo pipeline, sklearn model).",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -65,7 +65,7 @@ async def health_check():
     details = "All systems operational."
     if model is None:
         status = "DEGRADED"
-        details = "PyCaret model not loaded. Run the training script first."
+        details = "Model not loaded. Run train.py or scripts/finish_train.py first."
     return {
         "status": status,
         "details": details,

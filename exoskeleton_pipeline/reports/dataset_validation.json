@@ -1,0 +1,12 @@
+{
+  "n_samples": 50190,
+  "n_features": 77,
+  "n_trials": 35,
+  "nan_features": 0,
+  "inf_features": 0,
+  "nan_target": 0,
+  "target_min": -36.75998409892042,
+  "target_max": 38.63088602088261,
+  "target_mean": 7.61991220914131,
+  "target_std": 16.527850469205653
+}

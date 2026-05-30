@@ -31,14 +31,26 @@ MI_DOUBLE = 9
 MI_COMPRESSED = 15
 
 
-def find_camargo_root() -> str:
+def find_camargo_root(explicit: Optional[str] = None) -> str:
+    """Resolve Camargo dataset directory (env CAMARGO_ROOT, --data-root, or defaults)."""
+    if explicit and os.path.isdir(explicit):
+        return os.path.abspath(explicit)
+    env = os.environ.get("CAMARGO_ROOT")
+    if env and os.path.isdir(env):
+        return os.path.abspath(env)
     here = os.path.dirname(os.path.abspath(__file__))
-    for rel in ("../Data_repository_for_Camargo", "Data_repository_for_Camargo"):
-        p = os.path.normpath(os.path.join(here, rel))
+    candidates = [
+        os.path.join(here, "..", "Data_repository_for_Camargo"),
+        os.path.join(here, "Data_repository_for_Camargo"),
+        os.path.join(here, "..", "..", "Data_repository_for_Camargo"),
+        r"d:\Downloads\exoskeleton_system_using_biomedical_sensor_data\Data_repository_for_Camargo",
+    ]
+    for p in candidates:
+        p = os.path.normpath(p)
         if os.path.isdir(p):
             return p
     raise FileNotFoundError(
-        "Data_repository_for_Camargo not found next to exoskeleton_pipeline."
+        "Data_repository_for_Camargo not found. Set CAMARGO_ROOT or pass --data-root."
     )
 
 
@@ -66,19 +78,35 @@ def _extract_double_columns(dec: bytes, min_size: int = 500) -> List[np.ndarray]
     return columns
 
 
+# Camargo IK table: column 0 = Header (time). knee_angle_r is typically the
+# sagittal knee channel with gait-like oscillation (~0-60 deg), not near-constant ~90 deg.
+IK_KNEE_COLUMN_INDEX = 7  # index in full column list (0=Header, 7=knee_angle_r on AB06 treadmill)
+
+
 def _pick_knee_column(columns: List[np.ndarray]) -> np.ndarray:
-    """Heuristic: knee flexion during gait has moderate std in degrees."""
-    best = None
-    best_score = -1.0
+    """
+    Select knee_angle_r from IK numeric columns (skip Header at index 0).
+
+    Uses fixed index when available; fallback picks channel with gait-like
+    range (15-90 deg span, mean 0-50 deg, std > 3).
+    """
+    if len(columns) > IK_KNEE_COLUMN_INDEX:
+        col = columns[IK_KNEE_COLUMN_INDEX]
+        if col.std() > 1.0 and (col.max() - col.min()) > 10:
+            return col.reshape(-1, 1)
+
+    best, best_score = None, -1.0
     for col in columns[1:]:
         if col.std() < 1e-6:
             continue
-        if col.max() > 150 or col.min() < -90:
+        span = float(col.max() - col.min())
+        if span < 15 or col.min() < -90 or col.max() > 120:
             continue
-        score = float(col.std())
-        if 3.0 < score < 30.0 and score > best_score:
-            best_score = score
-            best = col
+        if col.mean() < -25 or col.mean() > 75:
+            continue
+        score = float(col.std()) * min(span, 80.0)
+        if score > best_score:
+            best_score, best = score, col
     if best is None:
         raise ValueError("Could not identify knee_angle_r column in IK file.")
     return best.reshape(-1, 1)

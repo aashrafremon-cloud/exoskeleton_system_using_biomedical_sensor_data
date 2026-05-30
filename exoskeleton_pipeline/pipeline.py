@@ -22,11 +22,12 @@ class EMGPipeline:
         self.overlap = overlap
         
         # 11 Standard EMG channels
-        self.channels = [
-            "gastrocmed", "tibialisanterior", "soleus", "vastusmedialis", 
-            "vastuslateralis", "rectusfemoris", "bicepsfemoris", 
-            "semitendinosus", "gracilis", "gluteusmedius", "rightexternaloblique"
-        ]
+        from config import EMG_CHANNELS
+        self.channels = list(EMG_CHANNELS)
+
+    def remove_dc_offset(self, data: np.ndarray) -> np.ndarray:
+        """Remove per-channel DC offset (mean)."""
+        return data - np.mean(data, axis=0, keepdims=True)
 
     def apply_highpass(self, data: np.ndarray, cutoff: float = 20.0, order: int = 4) -> np.ndarray:
         """Apply a high-pass Butterworth filter to remove movement artifacts."""
@@ -46,6 +47,11 @@ class EMGPipeline:
         norm_cutoff = cutoff / nyq
         b, a = signal.butter(order, norm_cutoff, btype="lowpass")
         return signal.filtfilt(b, a, data, axis=0)
+
+    def normalize_envelope(self, envelope: np.ndarray, eps: float = 1e-8) -> np.ndarray:
+        """Per-channel max normalization to [0, 1] scale (per trial)."""
+        peak = np.max(np.abs(envelope), axis=0, keepdims=True) + eps
+        return envelope / peak
         
     def decimate_signal(self, data: np.ndarray) -> np.ndarray:
         """Downsample the signal from original_fs to target_fs using decimation."""
@@ -55,34 +61,12 @@ class EMGPipeline:
         return data
 
     def extract_time_features(self, window_data: np.ndarray) -> np.ndarray:
-        """
-        Extract time-domain features (MAV, RMS, Waveform Length) for each channel.
-        
-        Args:
-            window_data: Segment of EMG data of shape (window_size, num_channels)
-            
-        Returns:
-            flat feature vector of shape (num_channels * 3,)
-        """
-        # 1. Mean Absolute Value (MAV)
-        mav = np.mean(np.abs(window_data), axis=0)
-        
-        # 2. Root Mean Square (RMS)
-        rms = np.sqrt(np.mean(window_data**2, axis=0) + 1e-8)
-        
-        # 3. Waveform Length (WL)
-        wl = np.sum(np.abs(np.diff(window_data, axis=0)), axis=0)
-        
-        # Concatenate features: MAVs followed by RMSs followed by WLs
-        return np.concatenate([mav, rms, wl])
+        from features import extract_window_features
+        return extract_window_features(window_data, self.channels)
 
     def get_feature_names(self) -> list:
-        """Generate human-readable names for the feature columns."""
-        names = []
-        for feat in ['mav', 'rms', 'wl']:
-            for ch in self.channels:
-                names.append(f"{ch}_{feat}")
-        return names
+        from features import get_feature_names
+        return get_feature_names(self.channels)
 
     def process_raw_emg(self, raw_emg: np.ndarray, return_features: bool = True) -> dict:
         """
@@ -100,15 +84,18 @@ class EMGPipeline:
         if raw_emg.shape[1] != len(self.channels):
             raise ValueError(f"EMG signal must have exactly {len(self.channels)} channels. Got shape {raw_emg.shape}")
 
+        # 0. DC offset removal
+        centered = self.remove_dc_offset(raw_emg)
         # 1. High-pass filtering to remove motion artifacts (>20Hz)
-        hp = self.apply_highpass(raw_emg, cutoff=20.0)
+        hp = self.apply_highpass(centered, cutoff=20.0)
         
         # 2. Rectification
         rect = self.rectify(hp)
         
         # 3. Low-pass filtering to extract smooth linear envelope (<6Hz)
         envelope = self.extract_envelope(rect, cutoff=6.0)
-        
+        envelope = self.normalize_envelope(envelope)
+
         # 4. Decimation (Downsampling from 1000Hz to 100Hz)
         downsampled = self.decimate_signal(envelope)
         
@@ -134,7 +121,14 @@ class EMGPipeline:
             'features': np.array(features_list) if return_features else None
         }
 
-def process_kinematics(raw_kin: np.ndarray, original_fs: float = 100.0, target_fs: float = 100.0, window_size: int = 20, overlap: float = 0.5) -> dict:
+def process_kinematics(
+    raw_kin: np.ndarray,
+    original_fs: float = 100.0,
+    target_fs: float = 100.0,
+    window_size: int = 20,
+    overlap: float = 0.5,
+    lag_samples: int = 0,
+) -> dict:
     """
     Process joint angle kinematics to align perfectly with EMG window intervals.
     Predicts the knee angle at the END of each window.
@@ -157,8 +151,9 @@ def process_kinematics(raw_kin: np.ndarray, original_fs: float = 100.0, target_f
     while start + window_size <= n_samples:
         segment = downsampled[start:start + window_size]
         windows.append(segment)
-        # Target prediction: state at the last sample of the window
-        y_reg_list.append(segment[-1, :])
+        # Target: knee angle at end of window + physiological lag (EMG leads motion)
+        tgt_idx = min(start + window_size - 1 + lag_samples, n_samples - 1)
+        y_reg_list.append(downsampled[tgt_idx, :])
         start += step
         
     return {
